@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Code
@@ -29,8 +29,8 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends \
             git zip unzip autoconf libtool libtool-bin gettext autopoint \
-            pkg-config zlib1g-dev libncursesw5-dev cmake libffi-dev \
-            libssl-dev build-essential lld clang libsqlite3-dev
+            pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
+            cmake libffi-dev libssl-dev build-essential lld clang libsqlite3-dev
           pip install --upgrade pip
           pip install "Cython==0.29.33" buildozer
 
@@ -43,4 +43,3 @@ jobs:
         with:
           name: calculator-apk
           path: bin/*.apk
-          
