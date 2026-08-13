@@ -1,56 +1,119 @@
 import re
-import ast
-from kivymd.app import MDApp
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.button import MDFillRoundFlatButton
-from kivymd.uix.label import MDLabel
-from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
-from kivy.uix.scrollview import ScrollView
+import sys
+import pygame
+
+pygame.init()
+pygame.font.init()
+
+display_info = pygame.display.Info()
+WIDTH = display_info.current_w if display_info.current_w > 0 else 720
+HEIGHT = display_info.current_h if display_info.current_h > 0 else 1280
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+pygame.display.set_caption("Android Calculator")
+clock = pygame.time.Clock()
+
+output = ""
+
+
+def update_layout(w, h):
+    font_size = max(16, int(w * 0.06))
+    font = pygame.font.Font(None, font_size)
+
+    padding_x = int(w * 0.02)
+    padding_y = int(h * 0.015)
+    start_x = padding_x
+    start_y = int(h * 0.22)
+
+    btn_w = (w - (padding_x * 5)) // 4
+    btn_h = int(h * 0.13)
+
+    button_rects = []
+    current_y = start_y
+
+    for row in range(5):
+        current_x = start_x
+        for col in range(4):
+            button_rects.append(pygame.Rect(current_x, current_y, btn_w, btn_h))
+            current_x += btn_w + padding_x
+        current_y += btn_h + padding_y
+
+    (
+        button_c,
+        button_modlus,
+        button_percent,
+        button_div,
+        button7,
+        button8,
+        button9,
+        button_multi,
+        button4,
+        button5,
+        button6,
+        button_sub,
+        button1,
+        button2,
+        button3,
+        button_plus,
+        button_0,
+        button_dot,
+        button_del,
+        button_eq,
+    ) = button_rects
+
+    buttons = [
+        (button1, "1"),
+        (button2, "2"),
+        (button3, "3"),
+        (button4, "4"),
+        (button5, "5"),
+        (button6, "6"),
+        (button7, "7"),
+        (button8, "8"),
+        (button9, "9"),
+        (button_0, "0"),
+        (button_plus, "+"),
+        (button_sub, "-"),
+        (button_multi, "*"),
+        (button_div, "/"),
+        (button_modlus, "mod"),
+        (button_percent, "%"),
+        (button_dot, "."),
+        (button_c, "C"),
+        (button_del, "Del"),
+        (button_eq, "="),
+    ]
+
+    box_rect = pygame.Rect(
+        padding_x, int(h * 0.03), w - (padding_x * 2), int(h * 0.16)
+    )
+
+    return (
+        font,
+        padding_x,
+        box_rect,
+        buttons,
+        (button_modlus, button_eq, button_c, button_del, button_percent),
+    )
+
+
+font, PADDING_X, box_rect, buttons, special_btns = update_layout(WIDTH, HEIGHT)
+button_modlus, button_eq, button_c, button_del, button_percent = special_btns
+
 
 def format_number(val):
     val = round(val, 10)
     return str(int(val)) if val.is_integer() else str(val)
 
-def safe_eval(expr):
-    try:
-        cleaned_expr = expr.replace("×", "*").replace("÷", "/")
-        node = ast.parse(cleaned_expr, mode="eval")
-        res = float(_eval_node(node.body))
-        return format_number(res)
-    except Exception:
-        return "Error"
-
-def _eval_node(node):
-    if isinstance(node, ast.Num):
-        return node.n
-    elif isinstance(node, ast.Constant):
-        return node.value
-    elif isinstance(node, ast.UnaryOp):
-        if isinstance(node.op, ast.USub):
-            return -_eval_node(node.operand)
-        elif isinstance(node.op, ast.UAdd):
-            return +_eval_node(node.operand)
-    elif isinstance(node, ast.BinOp):
-        left = _eval_node(node.left)
-        right = _eval_node(node.right)
-        if isinstance(node.op, ast.Add):
-            return left + right
-        elif isinstance(node.op, ast.Sub):
-            return left - right
-        elif isinstance(node.op, ast.Mult):
-            return left * right
-        elif isinstance(node.op, ast.Div):
-            if right == 0:
-                raise ZeroDivisionError("Division by zero")
-            return left / right
-    raise ValueError("Unsupported operation")
 
 def calculate_instant_percent(expr):
     if not expr:
         return ""
+
     try:
-        match_add_sub = re.match(r"^([0-9.]+)\s*([+\-])\s*([0-9.]+)$", expr.strip())
+        match_add_sub = re.match(
+            r"^([0-9.]+)\s*([+\-])\s*([0-9.]+)$", expr.strip()
+        )
         if match_add_sub:
             base = float(match_add_sub.group(1))
             op = match_add_sub.group(2)
@@ -71,145 +134,124 @@ def calculate_instant_percent(expr):
             pct = float(match_mul.group(3)) / 100.0
             return format_number(base * pct)
 
-        val = float(safe_eval(expr)) / 100.0
+        val = float(eval(expr)) / 100.0
         return format_number(val)
+
     except Exception:
         return "Error"
 
-class CalculatorApp(MDApp):
-    def build(self):
-        self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "BlueGray"
-        self.output = ""
 
-        main_layout = MDBoxLayout(orientation="vertical", padding=15, spacing=15)
+def handle_click(pos):
+    global output
+    if output == "Error":
+        output = ""
 
-        display_box = MDBoxLayout(
-            size_hint=(1, 0.25),
-            md_bg_color=(0.11, 0.11, 0.11, 1),
-            padding=(15, 10),
-            radius=[12, 12, 12, 12],
-        )
+    clicked_standard = False
 
-        self.scroll_view = ScrollView(
-            size_hint=(1, 1),
-            do_scroll_y=False,
-            do_scroll_x=True,
-            bar_width=0,
-        )
+    if button_modlus.collidepoint(pos):
+        try:
+            if output != "":
+                val = float(eval(output))
+                output = format_number(-val)
+        except Exception:
+            output = "Error"
+        clicked_standard = True
 
-        self.display = MDLabel(
-            text="0",
-            font_size="40sp",
-            halign="right",
-            valign="center",
-            size_hint=(None, 1),
-            theme_text_color="Custom",
-            text_color=(1, 1, 1, 1),
-        )
+    elif button_eq.collidepoint(pos):
+        try:
+            res = float(eval(output))
+            output = format_number(res)
+        except Exception:
+            output = "Error"
+        clicked_standard = True
 
-        self.display.bind(texture_size=self._update_label_width)
-        self.scroll_view.add_widget(self.display)
-        display_box.add_widget(self.scroll_view)
-        main_layout.add_widget(display_box)
+    elif button_c.collidepoint(pos):
+        output = ""
+        clicked_standard = True
 
-        grid = MDGridLayout(cols=4, spacing=10, size_hint=(1, 0.75))
+    elif button_del.collidepoint(pos):
+        output = output[:-1]
+        clicked_standard = True
 
-        buttons = [
-            ("C", (1, 0.8, 0, 1)), ("+/-", (1, 0.8, 0, 1)), ("%", (1, 0.8, 0, 1)), ("/", (0.9, 0.2, 0.2, 1)),
-            ("7", (0.2, 0.2, 0.3, 1)), ("8", (0.2, 0.2, 0.3, 1)), ("9", (0.2, 0.2, 0.3, 1)), ("*", (0.9, 0.2, 0.2, 1)),
-            ("4", (0.2, 0.2, 0.3, 1)), ("5", (0.2, 0.2, 0.3, 1)), ("6", (0.2, 0.2, 0.3, 1)), ("-", (0.9, 0.2, 0.2, 1)),
-            ("1", (0.2, 0.2, 0.3, 1)), ("2", (0.2, 0.2, 0.3, 1)), ("3", (0.2, 0.2, 0.3, 1)), ("+", (0.9, 0.2, 0.2, 1)),
-            ("0", (0.2, 0.2, 0.3, 1)), (".", (0.2, 0.2, 0.3, 1)), ("DEL", (1, 0.8, 0, 1)), ("=", (0.2, 0.8, 0.2, 1)),
-        ]
+    elif button_percent.collidepoint(pos):
+        if output != "":
+            output = calculate_instant_percent(output)
+        clicked_standard = True
 
-        for text, bg_color in buttons:
-            btn = MDFillRoundFlatButton(
-                text=text,
-                size_hint=(1, 1),
-                font_size="20sp",
-                md_bg_color=bg_color,
-                text_color=(1, 1, 1, 1),
+    if not clicked_standard:
+        for button_rect, value in buttons:
+            if value not in ["=", "C", "Del", "%", "mod"]:
+                if button_rect.collidepoint(pos):
+                    output += value
+                    break
+
+
+running = True
+while running:
+    clock.tick(60)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        elif event.type == pygame.VIDEORESIZE:
+            WIDTH, HEIGHT = event.w, event.h
+            screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+            font, PADDING_X, box_rect, buttons, special_btns = update_layout(
+                WIDTH, HEIGHT
             )
-            btn.bind(on_release=self.on_button_press)
-            grid.add_widget(btn)
+            button_modlus, button_eq, button_c, button_del, button_percent = (
+                special_btns
+            )
 
-        main_layout.add_widget(grid)
-        return main_layout
+        elif event.type == pygame.KEYDOWN:
+            back_key = getattr(pygame, "K_AC_BACK", pygame.K_ESCAPE)
+            if event.key in (pygame.K_ESCAPE, back_key):
+                running = False
 
-    def _update_label_width(self, instance, value):
-        instance.width = max(instance.texture_size[0], self.scroll_view.width)
-        self.scroll_view.scroll_x = 1
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            handle_click(event.pos)
 
-    def update_display(self, text):
-        display_text = text if text != "" else "0"
-        self.display.text = display_text
-        char_count = len(display_text)
-        if char_count > 18:
-            self.display.font_size = "22sp"
-        elif char_count > 12:
-            self.display.font_size = "28sp"
-        elif char_count > 8:
-            self.display.font_size = "34sp"
+    screen.fill("black")
+
+    pygame.draw.rect(screen, (28, 28, 28), box_rect, border_radius=15)
+
+    display_text = output if output != "" else "0"
+    display_surface = font.render(display_text, True, "WHITE")
+
+    text_x = box_rect.right - display_surface.get_width() - int(WIDTH * 0.03)
+    text_y = box_rect.centery - (display_surface.get_height() // 2)
+
+    screen.set_clip(box_rect)
+    screen.blit(display_surface, (max(box_rect.left + 10, text_x), text_y))
+    screen.set_clip(None)
+
+    for btn_rect, btn_text_str in buttons:
+        display_label = btn_text_str
+        if btn_text_str == "mod":
+            display_label = "+/-"
+        elif btn_text_str == "Del":
+            display_label = "DEL"
+
+        if display_label in ["C", "+/-", "%", "DEL"]:
+            bg_color = (255, 255, 0)
+            text_color = "BLACK"
+        elif display_label in ["/", "*", "-", "+"]:
+            bg_color = (255, 0, 0)
+            text_color = "BLACK"
+        elif display_label == "=":
+            bg_color = (0, 255, 0)
+            text_color = "BLACK"
         else:
-            self.display.font_size = "40sp"
+            bg_color = (0, 0, 255)
+            text_color = "BLACK"
 
-    def on_button_press(self, instance):
-        text = instance.text
-        operators = ("+", "-", "*", "/")
+        pygame.draw.rect(screen, bg_color, btn_rect, border_radius=12)
+        btn_text_surface = font.render(display_label, True, text_color)
+        text_rect = btn_text_surface.get_rect(center=btn_rect.center)
+        screen.blit(btn_text_surface, text_rect)
 
-        if self.output == "Error":
-            self.output = ""
+    pygame.display.flip()
 
-        if text == "C":
-            self.output = ""
-
-        elif text == "DEL":
-            self.output = self.output[:-1]
-
-        elif text == "+/-":
-            if self.output != "":
-                val = safe_eval(self.output)
-                if val != "Error":
-                    self.output = format_number(-float(val))
-                else:
-                    self.output = "Error"
-
-        elif text == "%":
-            if self.output != "":
-                self.output = calculate_instant_percent(self.output)
-
-        elif text == "=":
-            if self.output != "":
-                self.output = safe_eval(self.output)
-
-        elif text == ".":
-            last_segment = re.split(r"[+\-*/]", self.output)[-1]
-            if "." not in last_segment:
-                if not self.output or self.output[-1] in operators:
-                    self.output += "0."
-                else:
-                    self.output += "."
-
-        elif text in operators:
-            if not self.output:
-                if text == "-":
-                    self.output += text
-            elif self.output[-1] in operators:
-                self.output = self.output[:-1] + text
-            else:
-                self.output += text
-
-        elif text.isdigit():
-            last_segment = re.split(r"[+\-*/]", self.output)[-1]
-            digits_only = last_segment.replace(".", "")
-            if len(digits_only) >= 15:
-                MDSnackbar(MDSnackbarText(text="Maximum limit reached")).open()
-                return
-            else:
-                self.output += text
-
-        self.update_display(self.output)
-
-if __name__ == "__main__":
-    CalculatorApp().run()
+pygame.quit()
+sys.exit()
