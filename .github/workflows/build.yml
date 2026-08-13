@@ -9,12 +9,15 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -44,4 +47,17 @@ jobs:
         with:
           name: calculator-apk
           path: bin/*.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: v0.1-${{ github.run_number }}
+          name: Calculator APK Release v0.1-${{ github.run_number }}
+          body: |
+            ## Calculator App Release
+            Automated Android APK build from GitHub Actions.
+          files: bin/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
