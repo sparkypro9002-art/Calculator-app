@@ -109,7 +109,6 @@ def format_number(val):
 def calculate_instant_percent(expr):
     if not expr:
         return ""
-
     try:
         match_add_sub = re.match(
             r"^([0-9.]+)\s*([+\-])\s*([0-9.]+)$", expr.strip()
@@ -136,7 +135,6 @@ def calculate_instant_percent(expr):
 
         val = float(eval(expr)) / 100.0
         return format_number(val)
-
     except Exception:
         return "Error"
 
@@ -212,12 +210,12 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             handle_click(event.pos)
 
-    screen.fill("black")
+    screen.fill((0, 0, 0))
 
     pygame.draw.rect(screen, (28, 28, 28), box_rect, border_radius=15)
 
     display_text = output if output != "" else "0"
-    display_surface = font.render(display_text, True, "WHITE")
+    display_surface = font.render(display_text, True, (255, 255, 255))
 
     text_x = box_rect.right - display_surface.get_width() - int(WIDTH * 0.03)
     text_y = box_rect.centery - (display_surface.get_height() // 2)
@@ -234,17 +232,17 @@ while running:
             display_label = "DEL"
 
         if display_label in ["C", "+/-", "%", "DEL"]:
-            bg_color = (255, 255, 0)
-            text_color = "BLACK"
+            bg_color = (255, 200, 0)
+            text_color = (0, 0, 0)
         elif display_label in ["/", "*", "-", "+"]:
-            bg_color = (255, 0, 0)
-            text_color = "BLACK"
+            bg_color = (230, 50, 50)
+            text_color = (255, 255, 255)
         elif display_label == "=":
-            bg_color = (0, 255, 0)
-            text_color = "BLACK"
+            bg_color = (50, 200, 50)
+            text_color = (255, 255, 255)
         else:
-            bg_color = (0, 0, 255)
-            text_color = "BLACK"
+            bg_color = (50, 50, 70)
+            text_color = (255, 255, 255)
 
         pygame.draw.rect(screen, bg_color, btn_rect, border_radius=12)
         btn_text_surface = font.render(display_label, True, text_color)
