@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Code
@@ -27,9 +27,9 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip autoconf automake autopoint libtool libltdl-dev pkg-config zlib1g-dev libncurses-dev libtinfo6 cmake libffi-dev libssl-dev build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev gettext
+          sudo apt-get install -y git zip unzip autoconf automake autopoint libtool libltdl-dev pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev gettext
           python -m pip install --upgrade pip setuptools wheel
-          pip install Cython buildozer
+          pip install Cython==0.29.33 buildozer
 
       - name: Build APK with Buildozer
         env:
